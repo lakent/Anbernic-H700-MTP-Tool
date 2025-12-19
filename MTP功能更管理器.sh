@@ -40,17 +40,22 @@ function disable_mtp() {
 
 # Config update
 function update_mtp_conf() {
-    # Sync device info
-    sed \
-        -e "s/^usb_vendor_id .*/usb_vendor_id \"0x1d6b\"/" \
-        -e "s/^usb_product_id .*/usb_product_id \"0x0100\"/" \
-        -e "s/^serial .*/serial \"$SERIAL_NUM\"/" \
-        -e "s/^manufacturer .*/manufacturer \"$MANUFACTURER\"/" \
-        -e "s/^product .*/product \"$DEVICE_MODEL\"/" \
-        -e "s/^firmware_version .*/firmware_version \"$FIRMWARE_VER\"/" \
-        -i "$MTPCONF"
+    mount -o remount,rw / 2>/dev/null
+    mkdir -p /etc/umtprd
 
-    # SD2 toggle
+    cp "$progdir/mtp/umtprd.conf" /etc/umtprd/umtprd.conf
+
+    local TARGET="/etc/umtprd/umtprd.conf"
+
+    sed -i \
+        -e "s|^usb_vendor_id .*|usb_vendor_id \"0x1d6b\"|" \
+        -e "s|^usb_product_id .*|usb_product_id \"0x0100\"|" \
+        -e "s|^serial .*|serial \"$SERIAL_NUM\"|" \
+        -e "s|^manufacturer .*|manufacturer \"$MANUFACTURER\"|" \
+        -e "s|^product .*|product \"$DEVICE_MODEL\"|" \
+        -e "s|^firmware_version .*|firmware_version \"$FIRMWARE_VER\"|" \
+        "$TARGET"
+
     local sd2_content
     if mountpoint -q /mnt/sdcard 2>/dev/null; then
         sd2_content='storage "/mnt/sdcard" "SD2" "rw"'
@@ -58,17 +63,11 @@ function update_mtp_conf() {
         sd2_content='# SD2 not mounted'
     fi
 
-    sed -e "s|__SD2_ENTRY__|$sd2_content|" \
-        "$progdir/mtp/umtprd.conf" > "$MTPCONF"
+    sed -i "s|__SD2_ENTRY__|$sd2_content|" "$TARGET"
 }
 
 function enable_mtp() {
-    disable_mtp 1 
-
-    # Link config
-    mount -o remount,rw / 2>/dev/null 
-    mkdir -p /etc/umtprd
-    ln -sf "$MTPCONF" /etc/umtprd/umtprd.conf
+    disable_mtp 1
 
     [ -z "${1}" ] && mpv $rotate_28 --really-quiet --fs --image-display-duration=1 "${progdir}/res/mtpon-${LANG_CUR}.png"
     update_mtp_conf
@@ -88,6 +87,7 @@ function enable_mtp() {
     ln -sf "$GADGET/functions/ffs.mtp" "$GADGET/configs/c.1/"
     mkdir -p /dev/ffs.mtp
     mount -t functionfs mtp /dev/ffs.mtp
+
 
     # Start binary
     chmod +x "$MTPBIN"
