@@ -51,11 +51,15 @@ function update_mtp_conf() {
         -i "$MTPCONF"
 
     # SD2 toggle
+    local sd2_content
     if mountpoint -q /mnt/sdcard 2>/dev/null; then
-        sed -i 's|^#\(storage "/mnt/sdcard".*\)|\1|' "$MTPCONF"
+        sd2_content='storage "/mnt/sdcard" "SD2" "rw"'
     else
-        sed -i '/^#storage "/mnt/sdcard"/! s|^storage "/mnt/sdcard"|#storage "/mnt/sdcard"|' "$MTPCONF"
+        sd2_content='# SD2 not mounted'
     fi
+
+    sed -e "s|__SD2_ENTRY__|$sd2_content|" \
+        "$progdir/mtp/umtprd.conf" > "$MTPCONF"
 }
 
 function enable_mtp() {
